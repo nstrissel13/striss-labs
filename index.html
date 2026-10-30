@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><meta name="referrer" content="no-referrer"><title>My//Quest</title><style>:root{--bg:#050b1a;--cy:#22c3e6;--or:#ff9900;--mg:#e6155e;--gd:#f5b73b;--gr:#8a96a8;--tx:#e8f1ff;color-scheme:dark}
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><meta name="referrer" content="no-referrer"><title>My//Quest</title><link rel="icon" type="image/png" href="https://lh7-us.googleusercontent.com/sitesv-images-rt/AMxu72vqlzHonwHjRDhf0sdmFzuZ0FxJDHp8gsBh8J2zThRnbJ0J1TCKJ43v0d2TUiOLTE5sECGOE-sHRkl4v63ToGeKPjjST7w3UasZ_kpjpzWLVRIXyMTxnJN-XkFa74Ukn1nWsqUk21TUipA-b8HBrn4b9OA_CL1sfrLar-1HAuZTusOT0y1-QJEcoGBy_SSDhGiLle0BVwyvwVqgsWcOPCiszg"><link rel="apple-touch-icon" href="https://lh7-us.googleusercontent.com/sitesv-images-rt/AMxu72vqlzHonwHjRDhf0sdmFzuZ0FxJDHp8gsBh8J2zThRnbJ0J1TCKJ43v0d2TUiOLTE5sECGOE-sHRkl4v63ToGeKPjjST7w3UasZ_kpjpzWLVRIXyMTxnJN-XkFa74Ukn1nWsqUk21TUipA-b8HBrn4b9OA_CL1sfrLar-1HAuZTusOT0y1-QJEcoGBy_SSDhGiLle0BVwyvwVqgsWcOPCiszg"><style>:root{--bg:#050b1a;--cy:#22c3e6;--or:#ff9900;--mg:#e6155e;--gd:#f5b73b;--gr:#8a96a8;--tx:#e8f1ff;color-scheme:dark}
 *{box-sizing:border-box}body{margin:0;color:var(--tx);font:600 16px/1.35 Rajdhani,"Segoe UI",system-ui,sans-serif;background:radial-gradient(700px 360px at 95% -5%,#4a241acc,transparent),radial-gradient(600px 440px at 0 0,#06324a99,transparent),#050b1a;min-height:100vh}
 .w{max-width:860px;margin:0 auto;padding:14px 14px 30px;display:grid;gap:14px}
 .logo{font:900 26px Orbitron,sans-serif;letter-spacing:2px}.logo i{color:var(--or);font-style:normal}.logo small{display:block;font:600 11px Rajdhani,sans-serif;letter-spacing:5px;color:#9fb6cf}
@@ -248,7 +248,7 @@ async function readSheets(buf,wanted){
   if(sstU8)for(const si of xml(sstU8).getElementsByTagName('si')){let t='';for(const x of si.getElementsByTagName('t'))if(x.parentNode.nodeName!=='rPh')t+=x.textContent;sst.push(t)}
   const out={};
   for(const sh of wbx.getElementsByTagName('sheet')){
-    const name=sh.getAttribute('name');if(wanted&&!wanted.includes(name))continue;
+    const name=sh.getAttribute('name');if(wanted&&!(typeof wanted==='function'?wanted(name):wanted.includes(name)))continue;
     let path=target[sh.getAttribute('r:id')];if(!path)continue;path=path.startsWith('/')?path.slice(1):'xl/'+path;
     const data=await get(path);if(!data)continue;
     const rows=[];
@@ -275,54 +275,83 @@ const CFG={
   units:{1:'Foundations',2:'Matter & Energy',3:'Measurement'},
   badges:[['Origins','origins',0],['Worldview','worldview',0],['Foundations','foundations',1],['Star Dust','stardust',0],['Matter & Energy','matter',1],['Baker','baker',0],['Measurement','measurement',1]]
 };
-const SHEETS=['Classes','Decaying Average','EXP DASHBOARD','Do Now Dashboard','Badges'],OPTIONAL=['Ranks','Goals'];
+const SHEETS=['Classes','EXP DASHBOARD'],OPTIONAL=['Ranks','Goals'];
 const levelId=x=>{const s=String(x==null?'':x).trim().toLowerCase();return !s?'':/^ap\b|advanced|^ap/.test(s)?'ap':/honor/.test(s)?'honors':/regular|traditional|standard|college|^cp/.test(s)?'regular':''};
 const LV={regular:'Regular',honors:'Honors',ap:'AP'};
 const num=x=>typeof x==='number'&&isFinite(x)?x:null;
 function dispName(full){const p=String(full).trim().split(/\s+/);return p.length>1?p[0]+' '+p[p.length-1][0].toUpperCase()+'.':p[0]}
-function parseGradebook(S){
-  for(const n of SHEETS)if(!S[n])throw new Error(`The workbook has no sheet named "${n}".`);
+// Each class section has its own "<route> Grade" and "<route> Badge" sheet; the Classes sheet decides which section a student is in (column F).
+const ROUTES={'CHEM':{label:'Chem · Regular',lv:'regular',course:'chem'},'H CHEM':{label:'Chem · Honors',lv:'honors',course:'chem'},'AP CHEM':{label:'Chem · AP',lv:'ap',course:'chem'},
+  'BIO':{label:'Bio · Regular',lv:'bio-regular',course:'bio'},'H BIO':{label:'Bio · Honors',lv:'bio-honors',course:'bio'},'A&P':{label:'Anatomy & Physiology',lv:'anatomy',course:'bio'}};
+const wantSheet=n=>/\s(grade|badge)$/i.test(String(n).trim())||/^(classes|exp dashboard|ranks|goals)$/i.test(String(n).trim());
+const routeOf=(d,e)=>{d=norm(d);e=norm(e);if(!d)return'';
+  if(['a&p','anatomy & physiology','anatomy and physiology'].includes(d))return'A&P';
+  if(d==='ap chemistry'||d==='ap chem'||(d==='chemistry'&&/^(ap|advanced placement)$/.test(e)))return'AP CHEM';
+  if(d==='honors chemistry'||(d==='chemistry'&&e==='honors'))return'H CHEM';
+  if(d==='regular chemistry'||(d==='chemistry'&&e==='regular'))return'CHEM';
+  if(d==='honors biology'||(d==='biology'&&e==='honors'))return'H BIO';
+  if(d==='regular biology'||(d==='biology'&&e==='regular'))return'BIO';
+  return d==='physical science'?'NO SHEET':'CHECK COURSE'};
+function parseGrade(sh,route,warn){
+  const W=num((sh[1]||[])[4]),PRO=num((sh[2]||[])[3]),MAXS=num((sh[2]||[])[4]);
+  if(W==null||PRO==null||MAXS==null)throw new Error(`The "${route}" Grade sheet is missing its weight factor / proficiency range (E2, D3, E3).`);
+  const r4=sh[3]||[],r6=sh[5]||[],r7=sh[6]||[],r8=sh[7]||[];
+  const lessons=[];for(let c=0;c<r6.length;c++)if(r6[c]==='Attempt')lessons.push({s:c,id:String(r6[c+3]??''),name:String(r7[c+3]??'')});
+  if(!lessons.length)throw new Error(`No ProCheck attempt columns were found on the "${route}" Grade sheet (row 6 should say "Attempt").`);
+  const labs=[];
+  for(let c=0;c<r6.length;c++)if(r6[c]==='Lab'){let e=c+1;while(e<r8.length&&r8[e]!=='Lab')e++;
+    if(e>=r8.length){warn.push(`${route}: a Lab section has no overall "Lab" column and was skipped.`);continue}
+    labs.push({kind:'group',id:String(r6[e]??''),name:String(r7[e]??''),overall:e,of:num(r4[e]),parts:Array.from({length:e-c},(_,k)=>({n:String(r8[c+k]??''),c:c+k,max:num(r4[c+k])}))})}
+  for(let c=0;c<r8.length;c++)if(typeof r8[c]==='string'&&/^Lab\s*:/i.test(r8[c]))labs.push({kind:'single',id:String(r6[c]??''),name:r8[c].replace(/^Lab\s*:\s*/i,'').trim(),c});
+  labs.sort((a,b)=>(a.kind==='group'?a.parts[0].c:a.c)-(b.kind==='group'?b.parts[0].c:b.c));
+  if(!String(r8[6]||'').toLowerCase().startsWith('prof')||!String(r8[7]||'').toLowerCase().startsWith('master'))warn.push(`${route}: columns G and H no longer look like Proficient / Mastered counts.`);
+  const rows={};for(let i=8;i<sh.length;i++){const n=sh[i]&&sh[i][0];if(typeof n==='string'&&n.trim()&&n!=='Student')rows[norm(n)]=sh[i]}
+  return{W,PRO,MAXS,lessons,labs,rows};
+}
+function parseGradebook(S0){
+  const S={};for(const k in S0)S[norm(k)]=S0[k];const sh=n=>S[norm(n)];
+  for(const n of SHEETS)if(!sh(n))throw new Error(`The workbook has no sheet named "${n}".`);
   const warn=[];let RK=null;
-  if(S.Ranks){const t=[];for(const r of S.Ranks.slice(1)){const l=num(r&&r[0]),n=r&&r[1]!=null?String(r[1]).trim():'';if(l!=null&&n)t.push([Math.max(0,Math.floor(l)),n])}
-    t.sort((a,b)=>a[0]-b[0]);if(t.length){if(t[0][0]>0)t.unshift([0,CFG.ranks[0][1]]);RK=t}else warn.push('The Ranks sheet has no usable rows (need Level in column A and Title in column B); using the default titles.')}
+  const rkRows=[];
+  if(sh('Ranks'))for(const r of sh('Ranks').slice(1))rkRows.push([r&&r[0],r&&r[1]]);
+  const ex=sh('EXP DASHBOARD');
+  if(!rkRows.length){for(let i=2;i<ex.length;i++){const r=ex[i]||[];if(r[12]!=null&&r[13]!=null)rkRows.push([r[12],r[13]])}}   // "Level Names" table on EXP DASHBOARD (M:N)
+  {const t=[];for(const r of rkRows){const m=/\d+/.exec(String(r[0]??'')),l=m?+m[0]:null,n=r[1]!=null?String(r[1]).trim():'';if(l!=null&&n)t.push([Math.max(0,Math.floor(l)),n])}
+    t.sort((a,b)=>a[0]-b[0]);if(t.length){t[0][0]=0;RK=t}else warn.push('No rank titles found (EXP DASHBOARD columns M and N, or a Ranks sheet); using the default titles.')}
   const GOALS=[];
-  if(S.Goals){for(const r of S.Goals.slice(1)){if(!r||r.every(x=>x==null||x===''))continue;
+  if(sh('Goals')){for(const r of sh('Goals').slice(1)){if(!r||r.every(x=>x==null||x===''))continue;
     const mt=String(r[2]||'').toLowerCase(),metric=/exp/.test(mt)?'exp':/master/.test(mt)?'mastered':/prof/.test(mt)?'prof':null,tg=num(r[3]),lv=levelId(r[0]);
     if(!metric||tg==null||tg<=0){warn.push(`Goals sheet: skipped a row (Tier "${r[1]??''}"). Metric must be EXP, Mastered or Proficient and Target must be a number.`);continue}
     if(r[0]!=null&&String(r[0]).trim()!==''&&!lv){warn.push(`Goals sheet: class "${r[0]}" is not Regular, Honors or AP; that row applies to all classes.`)}
     GOALS.push({p:lv,tier:String(r[1]??'').trim(),metric,target:tg,reward:String(r[4]??'').trim()})}}
-  const {Classes:cl,'Decaying Average':da,'EXP DASHBOARD':ex,'Do Now Dashboard':dn,Badges:bd}=S;
-  const W=num((da[1]||[])[4]),PRO=num((da[2]||[])[3]),MAXS=num((da[2]||[])[4]);
-  if(W==null||PRO==null||MAXS==null)throw new Error('Could not find the weight factor / proficiency range on Decaying Average (E2, D3, E3).');
-  const rate={};for(let i=1;i<=6;i++){const r=ex[i]||[];if(r[9]!=null)rate[r[9]]=num(r[10])}
-  const R={pro:rate['Pro'],mas:rate['Master'],dn:rate['Do Now'],lvl:rate['/ Lvl']};
-  if(Object.values(R).some(v=>v==null))throw new Error('Could not read the EXP rates on EXP DASHBOARD (J2:K7).');
-  const r4=da[3]||[],r6=da[5]||[],r7=da[6]||[],r8=da[7]||[];
-  const lessons=[];for(let c=0;c<r6.length;c++)if(r6[c]==='Attempt')lessons.push({s:c,id:String(r6[c+3]??''),name:String(r7[c+3]??'')});
-  if(!lessons.length)throw new Error('No ProCheck attempt columns were found on Decaying Average (row 6 should say "Attempt").');
-  const labs=[];
-  for(let c=0;c<r6.length;c++)if(r6[c]==='Lab'){let e=c+1;while(e<r8.length&&r8[e]!=='Lab')e++;
-    if(e>=r8.length){warn.push('A Lab section has no overall "Lab" column and was skipped.');continue}
-    labs.push({kind:'group',id:String(r6[e]??''),name:String(r7[e]??''),overall:e,of:num(r4[e]),parts:Array.from({length:e-c},(_,k)=>({n:String(r8[c+k]??''),c:c+k,max:num(r4[c+k])}))})}
-  for(let c=0;c<r8.length;c++)if(typeof r8[c]==='string'&&/^Lab\s*:/i.test(r8[c]))labs.push({kind:'single',id:String(r6[c]??''),name:r8[c].replace(/^Lab\s*:\s*/i,'').trim(),c});
-  labs.sort((a,b)=>(a.kind==='group'?a.parts[0].c:a.c)-(b.kind==='group'?b.parts[0].c:b.c));
-  const gh=String(r8[6]||'').toLowerCase();if(!gh.startsWith('prof')||!String(r8[7]||'').toLowerCase().startsWith('master'))warn.push('Columns G and H on Decaying Average no longer look like Proficient / Mastered counts. EXP may be wrong.');
-  // lookups by normalized name
-  const daRow={};for(let i=8;i<da.length;i++){const n=da[i]&&da[i][0];if(typeof n==='string'&&n.trim()&&n!=='Student')daRow[norm(n)]=da[i]}
-  const dnRow={};for(let i=5;i<dn.length;i++){const n=dn[i]&&dn[i][0];if(typeof n==='string'&&n.trim())dnRow[norm(n)]=dn[i]}
-  const bdHead=bd[0]||[],bdRow={};for(let i=1;i<bd.length;i++){const n=bd[i]&&bd[i][0];if(typeof n==='string'&&n.trim())bdRow[norm(n)]=bd[i]}
-  const roster=[];for(let i=1;i<cl.length;i++){const r=cl[i]||[];if(typeof r[0]==='string'&&r[0].trim())roster.push({name:r[0].trim(),period:r[2],level:levelId(r[3])})}
-  if(!roster.length)throw new Error('The Classes sheet has no students.');
-  const noLv=roster.filter(r=>!r.level);
-  if(noLv.length===roster.length)warn.push('The Classes sheet has no "Level" column (column D: Regular, Honors or AP). Everyone is shown under Regular for now.');
-  else if(noLv.length)warn.push(`${noLv.length} student(s) on the Classes sheet have no Level (column D) and are shown under Regular: ${noLv.slice(0,8).map(r=>r.name).join(', ')}${noLv.length>8?'…':''}.`);
-  roster.forEach(r=>{if(!r.level)r.level='regular'});
-  const pcf=a=>{const n=a.length;if(n>=3)return(a[0]*(1-W)+a[1]*W)*(1-W)+a[2]*W;if(n===2)return a[1]>=PRO?a[0]*(1-W)+a[1]*W:'R';if(n===1)return a[0]>=PRO?a[0]:'R';return'M'};
+  // EXP DASHBOARD: totals are calculated by the workbook (Pro + Master + Do Now + Badges + Unit), one row per student on the Classes sheet.
+  const rate={};for(let i=1;i<=9;i++){const r=ex[i]||[];if(r[9]!=null)rate[String(r[9]).trim()]=num(r[10])}
+  const R={pro:rate['Pro'],mas:rate['Master'],dn:rate['Do Now'],bdg:rate['Badges'],unit:rate['Unit'],lvl:rate['/ Lvl']};
+  if(!R.lvl)throw new Error('Could not read the "/ Lvl" EXP rate on EXP DASHBOARD (column J/K).');
+  const expRow={};for(let i=1;i<ex.length;i++){const n=ex[i]&&ex[i][0];if(typeof n==='string'&&n.trim())expRow[norm(n)]=ex[i]}
+  // roster
+  const cl=sh('Classes'),roster=[],skipped={};
+  for(let i=1;i<cl.length;i++){const r=cl[i]||[];if(typeof r[0]!=='string'||!r[0].trim())continue;
+    const f=String(r[5]==null?'':r[5]).trim(),route=f||routeOf(r[3],r[4]),name=r[0].trim(),nick=typeof r[1]==='string'&&r[1].trim()?r[1].trim():'';
+    if(route==='NO SHEET'){skipped.nosheet=(skipped.nosheet||0)+1;continue}
+    if(!ROUTES[route]){(skipped.check=skipped.check||[]).push(name);continue}
+    roster.push({name,disp:dispName(nick||name),route,level:ROUTES[route].lv,course:ROUTES[route].course,period:ROUTES[route].label})}
+  if(skipped.nosheet)warn.push(`${skipped.nosheet} student(s) are in a course with no class sheet (Physical Science) and were left out.`);
+  if(skipped.check)warn.push(`${skipped.check.length} student(s) need a Course / Class on the Classes sheet (it says CHECK COURSE) and were left out: ${skipped.check.slice(0,8).join(', ')}${skipped.check.length>8?'…':''}.`);
+  if(!roster.length)throw new Error('The Classes sheet has no students in a class that has a Grade sheet.');
+  // per-class sheets
+  const G={},B={};
+  for(const rt of new Set(roster.map(r=>r.route))){
+    const g=sh(rt+' Grade');if(!g){warn.push(`No "${rt} Grade" sheet was found; students in ${ROUTES[rt].label} show as not in the gradebook yet.`);continue}
+    G[rt]=parseGrade(g,rt,warn);const b=sh(rt+' Badge');
+    if(b){const head=b[0]||[],rows={};for(let i=1;i<b.length;i++){const n=b[i]&&b[i][0];if(typeof n==='string'&&n.trim())rows[norm(n)]=b[i]}B[rt]={head,rows}}
+    else warn.push(`No "${rt} Badge" sheet was found; no badges are shown for ${ROUTES[rt].label}.`)}
   const students=[],missing=[];
   for(const st of roster){
-    const row=daRow[norm(st.name)];
-    if(!row){missing.push(st.name);students.push({name:st.name,period:st.period,level:st.level,rec:{n:dispName(st.name),nodata:true,per:st.level}});continue}
-    const L=lessons.map(ls=>{
+    const g=G[st.route],row=g&&g.rows[norm(st.name)],base={name:st.name,period:st.period,route:st.route,level:st.level};
+    if(!row){missing.push(st.name);students.push({...base,rec:{n:st.disp,nodata:true,per:st.level}});continue}
+    const {W,PRO,MAXS}=g,pcf=a=>{const n=a.length;if(n>=3)return(a[0]*(1-W)+a[1]*W)*(1-W)+a[2]*W;if(n===2)return a[1]>=PRO?a[0]*(1-W)+a[1]*W:'R';if(n===1)return a[0]>=PRO?a[0]:'R';return'M'};
+    const L=g.lessons.map(ls=>{
       const raw=[0,1,2].map(j=>row[ls.s+j]),att=raw.filter(v=>typeof v==='number'),cached=row[ls.s+3];
       if(raw.some((v,j)=>v==null&&raw.slice(j+1).some(x=>x!=null)))warn.push(`${st.name}, lesson ${ls.id}: attempts have a gap.`);
       const calc=pcf(att);
@@ -331,30 +360,36 @@ function parseGradebook(S){
       const stt=!att.length?'none':cached==='R'?'retake':best>=MAXS?'mastered':best>=PRO?'proficient':'below';
       return{id:ls.id,name:ls.name,att,score:typeof cached==='number'?cached:null,st:stt,best};
     });
-    const LB=labs.map(lb=>{
+    const LB=g.labs.map(lb=>{
       if(lb.kind==='single'){const v=num(row[lb.c]);return{id:lb.id,name:lb.name,single:true,v,st:v==null?'none':'complete'}}
       const parts=lb.parts.map(p=>({n:p.n,v:num(row[p.c]),max:p.max})),got=parts.filter(p=>p.v!=null),pts=got.reduce((a,p)=>a+p.v,0);
       const cached=num(row[lb.overall]);let pct=cached!=null?cached:(lb.of&&got.length===parts.length?pts/lb.of:null);
       if(cached!=null&&lb.of&&got.length===parts.length&&Math.abs(cached-pts/lb.of)>1e-9)warn.push(`${st.name}, lab ${lb.id}: the sheet's overall score differs from points / total.`);
       return{id:lb.id,name:lb.name,parts,pts,of:lb.of,pct,st:got.length===parts.length?'complete':got.length?'progress':'none'};
     });
-    const dr=dnRow[norm(st.name)],dnq=dr?[1,5,9,13].reduce((a,c)=>a+(num(dr[c])||0),0):0;
-    if(!dr)warn.push(`${st.name}: not found on Do Now Dashboard (Do Now EXP counted as 0).`);
-    const total=(num(row[6])||0)*R.pro+(num(row[7])||0)*R.mas+dnq*R.dn;
-    const br=bdRow[norm(st.name)];if(!br)warn.push(`${st.name}: not found on the Badges sheet (no badges shown).`);
-    const earned=CFG.badges.map(b=>{const c=bdHead.findIndex(h=>norm(h)===norm(b[0]));return !!(br&&c>=0&&br[c]===true)});
-    students.push({name:st.name,period:st.period,level:st.level,rec:{n:dispName(st.name),nodata:false,total,lvl:R.lvl,pro:PRO,max:MAXS,earned,L,labs:LB,rk:RK,per:st.level}});
+    const er=expRow[norm(st.name)];let total=er?num(er[6]):null;
+    if(total==null){warn.push(`${st.name}: no EXP total on EXP DASHBOARD (EXP counted as 0).`);total=0}
+    else if(er&&num(er[7])!=null&&num(er[7])!==Math.floor(total/R.lvl))warn.push(`${st.name}: the Level on EXP DASHBOARD (${er[7]}) differs from EXP ÷ ${R.lvl}.`);
+    const bs=B[st.route],br=bs&&bs.rows[norm(st.name)];if(bs&&!br)warn.push(`${st.name}: not found on the ${st.route} Badge sheet (no badges shown).`);
+    const earned=CFG.badges.map(b=>{const c=bs?bs.head.findIndex(h=>norm(h)===norm(b[0])):-1;return !!(br&&c>=0&&br[c]===true)});
+    students.push({...base,rec:{n:st.disp,nodata:false,total,lvl:R.lvl,pro:PRO,max:MAXS,earned,L,labs:LB,rk:RK,per:st.level}});
   }
-  const rosterSet=new Set(roster.map(r=>norm(r.name))),extra=Object.keys(daRow).filter(k=>!rosterSet.has(k));
-  if(extra.length)warn.push(`${extra.length} student(s) on Decaying Average are not on the Classes sheet and were skipped: ${extra.join(', ')}.`);
+  const rosterSet=new Set(roster.map(r=>norm(r.name))),extra=[];
+  for(const rt in G)for(const k in G[rt].rows)if(!rosterSet.has(k))extra.push(k);
+  if(extra.length)warn.push(`${extra.length} student(s) on a Grade sheet are not on the Classes sheet and were skipped: ${extra.join(', ')}.`);
+  // class dashboards (Chemistry for now: Regular / Honors / AP)
   const per={};
-  for(const st of students){const p=st.level;if(!p)continue;
-    const o=per[p]||(per[p]={id:p,roster:0,n:0,exp:0,mastered:0,prof:0,ex:{}});o.roster++;if(st.rec.nodata)continue;o.n++;o.exp+=st.rec.total;
+  for(const st of students){if(!st.level||ROUTES[st.route].course!=='chem')continue;const g=G[st.route],p=st.level;
+    const o=per[p]||(per[p]={id:p,roster:0,n:0,exp:0,mastered:0,prof:0,ex:{},lessons:g?g.lessons.map(l=>({id:l.id,name:l.name})):[],max:g?g.MAXS:null,pro:g?g.PRO:null});
+    o.roster++;if(st.rec.nodata)continue;o.n++;o.exp+=st.rec.total;
     for(const l of st.rec.L){if(l.st==='mastered')o.mastered++;if(l.st==='mastered'||l.st==='proficient')o.prof++;
-      if(l.att[0]>=MAXS||l.att[1]>=MAXS)(o.ex[l.id]=o.ex[l.id]||[]).push(st.rec.n)}}
+      if(l.att[0]>=g.MAXS||l.att[1]>=g.MAXS)(o.ex[l.id]=o.ex[l.id]||[]).push(st.rec.n)}}
   for(const o of Object.values(per))for(const k in o.ex)o.ex[k].sort((a,b)=>a.localeCompare(b));
-  const cls={max:MAXS,pro:PRO,lessons:lessons.map(l=>({id:l.id,name:l.name})),periods:Object.values(per).sort((a,b)=>['regular','honors','ap'].indexOf(a.id)-['regular','honors','ap'].indexOf(b.id)),goals:GOALS};
-  return{cls,students,missing,warn,meta:{lessons:lessons.map(l=>({id:l.id,name:l.name})),labs:labs.map(l=>({id:l.id,name:l.name}))},rates:R,pro:PRO,max:MAXS};
+  const pl=Object.values(per).sort((a,b)=>['regular','honors','ap'].indexOf(a.id)-['regular','honors','ap'].indexOf(b.id)),first=pl.find(p=>p.lessons.length)||pl[0]||{lessons:[],max:8,pro:6};
+  const cls={max:first.max,pro:first.pro,lessons:first.lessons,periods:pl,goals:GOALS};
+  const byRoute={};for(const rt in G)if(students.some(s=>s.route===rt))byRoute[rt]={label:ROUTES[rt].label,lessons:G[rt].lessons.map(l=>({id:l.id,name:l.name})),labs:G[rt].labs.map(l=>({id:l.id,name:l.name}))};
+  const m0=Object.values(byRoute)[0]||{lessons:[],labs:[]};
+  return{cls,students,missing,warn,meta:{lessons:m0.lessons,labs:m0.labs,byRoute},rates:R,pro:first.pro,max:first.max};
 }
 async function buildData(P,tkey,knownKeys){
   const keys={},blobs=[],trec=[];
@@ -362,7 +397,7 @@ async function buildData(P,tkey,knownKeys){
     const key=knownKeys[norm(s.name)]||rndKey();keys[norm(s.name)]=key;
     s.rec.built=P.built;blobs.push(await seal(key,s.rec));
     const L=s.rec.L||[],cnt=k=>L.filter(l=>l.st===k).length;
-    trec.push({name:s.name,disp:s.rec.n,period:s.period,key,nodata:s.rec.nodata,total:s.rec.total||0,lvl:s.rec.lvl||900,
+    trec.push({name:s.name,disp:s.rec.n,period:s.period,route:s.route,key,nodata:s.rec.nodata,total:s.rec.total||0,lvl:s.rec.lvl||900,
       st:L.map(l=>l.st),labs:(s.rec.labs||[]).map(l=>l.st),mastered:cnt('mastered'),proficient:cnt('proficient'),attention:cnt('retake')+cnt('below'),none:cnt('none')});
   }
   const teacher={built:P.built,students:trec,meta:P.meta};
@@ -435,10 +470,10 @@ function classPage(C,sel,me){
 <ul class="tiers">${g.map(x=>{const ok=v>=x.target;return`<li class="${ok?'ok':''}"><span class="tk">${ok?'&#10003;':''}</span><span class="tn">${E(x.tier||'Tier')}</span><span class="tr">${x.reward?E(x.reward):''}</span><span class="tg">${ok?'UNLOCKED':(x.target-v).toLocaleString('en-US')+' to go'}</span></li>`}).join('')}</ul></div>`}
   const goalH=`<section class="pn"><h2>CLASS GOALS<small>${E(lbl(P.id).toUpperCase())} CHEMISTRY</small></h2>${goals||'<p class="note">Your teacher has not set class goals yet.</p>'}</section>`;
   // experts
-  let ex='';for(const u of [...new Set(C.lessons.map(l=>parseInt(l.id)))].sort((a,b)=>a-b)){
-    const ls=C.lessons.filter(l=>parseInt(l.id)===u);
+  const LS=P.lessons&&P.lessons.length?P.lessons:C.lessons;let ex='';for(const u of [...new Set(LS.map(l=>parseInt(l.id)))].sort((a,b)=>a-b)){
+    const ls=LS.filter(l=>parseInt(l.id)===u);
     ex+=`<h3>UNIT ${u} &middot; ${E((CFG.units[u]||'').toUpperCase())}</h3>`+ls.map(l=>{const w=P.ex[l.id]||[];return`<div class="xrow ${w.length?'':'none'}"><div class="xl"><b>${E(l.id)}</b> ${E(l.name)}</div><div class="xw">${w.length?w.map(n=>`<span class="xchip">${E(n)}</span>`).join(''):'<em>No experts yet. Be the first!</em>'}</div></div>`}).join('')}
-  const exH=`<section class="pn"><h2>EXPERT HELP DESK<small>ASK AN EXPERT</small></h2><p class="note">An <b>Expert</b> scored the top score (${fmt(C.max)}) on a ProCheck on their first or second try. Stuck on a skill? Find it below and ask one of its experts for help.</p>${ex}</section>`;
+  const exH=`<section class="pn"><h2>EXPERT HELP DESK<small>ASK AN EXPERT</small></h2><p class="note">An <b>Expert</b> scored the top score (${fmt(P.max||C.max)}) on a ProCheck on their first or second try. Stuck on a skill? Find it below and ask one of its experts for help.</p>${ex}</section>`;
   return head(`${bar}<section class="pn"><h2>${E(lbl(P.id).toUpperCase())} CHEMISTRY<small>TEAM STATS</small></h2><div class="tiles">${tiles}</div></section>${goalH}${exH}`);
 }
 
@@ -459,7 +494,7 @@ function homePage(){
 
 // ===================== app: routing, teacher tools, GitHub publish =====================
 const app=document.getElementById('app'),$=(s,r=document)=>r.querySelector(s),$$=(s,r=document)=>[...r.querySelectorAll(s)];
-const GH='cq_gh',KC='cq_keys',S={tab:'students',period:'all',reissue:new Set(),log:[]};
+const GH='cq_gh',GHB='cq_ghb',KC='cq_keys',S={tab:'students',period:'all',reissue:new Set(),log:[]};
 const lsGet=(k,d)=>{try{return JSON.parse(localStorage.getItem(k))??d}catch(e){return d}},lsSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
 const baseUrl=()=>location.href.split('#')[0];
 const setBanner=t=>{const e=document.getElementById('bt');if(e)e.textContent=t};
@@ -477,7 +512,9 @@ async function boot(){
   if('setup' in q){setBanner('TEACHER TOOLS');S.setup=true;S.tkey=rndKey();return teacherUI()}
   if(!Object.keys(q).length){setBanner('MY//QUEST');document.title='Strissel Laboratory · My//Quest';app.innerHTML=homePage();document.body.classList.add('onhome');startVerses();return}
   let data=null;try{const r=await fetch('data.json?'+Date.now(),{cache:'no-store'});if(!r.ok)throw 0;data=await r.json()}catch(e){}
-  if(q.t){setBanner('TEACHER TOOLS');S.tkey=q.t;S.data=data;if(data&&data.t){S.teacher=await unseal(S.tkey,data.t);if(!S.teacher)return msg('This teacher link is not valid.','It does not match the data on this site.')}return teacherUI()}
+  if(q.t){setBanner('TEACHER TOOLS');S.tkey=q.t;S.data=data;if(data&&data.t){S.teacher=await unseal(S.tkey,data.t);if(!S.teacher)return msg('This teacher link is not valid.','It does not match the data on this site.')}
+    if(data&&data.g&&!ghCfg()){const g=await unseal(S.tkey,data.g);if(g&&g.owner&&g.repo&&g.token){lsSet(GH,{owner:g.owner,repo:g.repo,branch:g.branch||'main',path:'data.json',token:g.token});S.restored=true}}
+    return teacherUI()}
   if(!data)return msg('This page could not load its data.','Check your internet connection and try again. If it keeps happening, tell your teacher.');
   if(q.s&&q.c===undefined){
     const id=await idOf(q.s),blob=data.s.find(b=>b.id===id),rec=blob&&await unseal(q.s,blob);
@@ -512,7 +549,7 @@ async function lastFile(){try{const h=await idb('get','fh');if(!h)return null;if
 async function build(file){
   S.busy='Reading '+file.name+'…';S.err=null;S.result=null;S.published=false;paint();
   try{
-    const sheets=await readSheets(await file.arrayBuffer(),SHEETS.concat(OPTIONAL)),P=parseGradebook(sheets);
+    const sheets=await readSheets(await file.arrayBuffer(),wantSheet),P=parseGradebook(sheets);
     P.built=new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
     const known={...lsGet(KC,{}),...(S.teacher?Object.fromEntries(S.teacher.students.map(s=>[norm(s.name),s.key])):{}),...await serverKeys()};
     for(const n of S.reissue)delete known[n];
@@ -523,6 +560,7 @@ async function build(file){
 async function publish(){
   const c=ghCfg();S.busy='Publishing…';S.err=null;paint();
   try{
+    if(lsGet(GHB,true)&&c.token)S.result.data.g=await seal(S.tkey,{owner:c.owner,repo:c.repo,branch:c.branch,token:c.token});else delete S.result.data.g;
     const text=JSON.stringify(S.result.data),body=ex=>({message:'Update student data',content:b64(enc.encode(text)),branch:c.branch,...(ex?{sha:ex.sha}:{})});
     let ex=await ghRead(c);
     if(ex){let old=null;try{old=JSON.parse(ex.text)}catch(e){}
@@ -548,25 +586,27 @@ function paint(){
   else body=updateTab(tl);
   app.innerHTML=`<div class="w"><div class="logo">CHEM<i>//</i>QUEST<small>TEACHER TOOLS</small></div><div class="tabs">${tabs.map(t=>`<button data-tab="${t[0]}" class="${S.tab===t[0]?'on':''}">${t[1].toUpperCase()}</button>`).join('')}</div>${body}<input type="file" id="file" accept=".xlsx,.xlsm" hidden></div>`;
 }
+const pOrd=(a,b)=>{const f=x=>{const i=Object.values(ROUTES).findIndex(r=>r.label===x);return i<0?99:i};return f(a)-f(b)||String(a).localeCompare(b)};
 function studentsTab(T){
-  const periods=[...new Set(T.students.map(s=>s.period))].sort(),rows=T.students.filter(s=>S.period==='all'||String(s.period)===S.period);
+  const periods=[...new Set(T.students.map(s=>s.period))].sort(pOrd),rows=T.students.filter(s=>S.period==='all'||String(s.period)===S.period);
   return`<section class="pn"><h2>STUDENTS & LINKS<small>UPDATED ${E(T.built)}</small></h2>
 <div class="bar-row"><button class="btn" data-act="copyc">Copy home page link</button><button class="btn" data-act="openc">Open home page</button></div>
-<div class="bar-row"><label>Period <select id="per"><option value="all">All</option>${periods.map(p=>`<option value="${E(p)}" ${String(p)===S.period?'selected':''}>${E(p)}</option>`).join('')}</select></label><button class="btn" data-act="csv">Download all links (CSV)</button></div>
+<div class="bar-row"><label>Class <select id="per"><option value="all">All</option>${periods.map(p=>`<option value="${E(p)}" ${String(p)===S.period?'selected':''}>${E(p)}</option>`).join('')}</select></label><button class="btn" data-act="csv">Download all links (CSV)</button></div>
 <p class="note warn">Each link is a password for that student's page. Only send a link to its student.</p>
-<div class="tw"><table><thead><tr><th>Student</th><th>Per.</th><th>Mastered</th><th>Proficient</th><th>Needs attention</th><th></th></tr></thead><tbody>${rows.map(s=>`<tr><td>${E(s.name)}${s.nodata?' <span class="chip gr">NO SCORES YET</span>':''}${S.reissue.has(norm(s.name))?' <span class="chip or">NEW LINK ON NEXT UPDATE</span>':''}</td><td>${E(s.period)}</td><td>${s.mastered}</td><td>${s.proficient}</td><td class="${s.attention?'or':''}">${s.attention}</td><td class="act"><button class="btn sm" data-act="copy" data-k="${E(s.key)}">Copy link</button><button class="btn sm ghost" data-act="open" data-k="${E(s.key)}">Open</button><button class="btn sm ghost" data-act="reissue" data-n="${E(norm(s.name))}">New link</button></td></tr>`).join('')}</tbody></table></div></section>`}
+<div class="tw"><table><thead><tr><th>Student</th><th>Class</th><th>Mastered</th><th>Proficient</th><th>Needs attention</th><th></th></tr></thead><tbody>${rows.map(s=>`<tr><td>${E(s.name)}${s.nodata?' <span class="chip gr">NO SCORES YET</span>':''}${S.reissue.has(norm(s.name))?' <span class="chip or">NEW LINK ON NEXT UPDATE</span>':''}</td><td>${E(s.period)}</td><td>${s.mastered}</td><td>${s.proficient}</td><td class="${s.attention?'or':''}">${s.attention}</td><td class="act"><button class="btn sm" data-act="copy" data-k="${E(s.key)}">Copy link</button><button class="btn sm ghost" data-act="open" data-k="${E(s.key)}">Open</button><button class="btn sm ghost" data-act="reissue" data-n="${E(norm(s.name))}">New link</button></td></tr>`).join('')}</tbody></table></div></section>`}
 function classTab(T){
-  const periods=[...new Set(T.students.map(s=>s.period))].sort(),P=S.period==='all'?'all':S.period,st=T.students.filter(s=>!s.nodata&&(P==='all'||String(s.period)===P)),n=st.length;
-  const rows=T.meta.lessons.map((l,i)=>{const d=st.filter(s=>s.st[i]==='mastered'||s.st[i]==='proficient').length,r=st.filter(s=>s.st[i]==='retake').length,p=n?Math.round(d/n*100):0;
+  const periods=[...new Set(T.students.map(s=>s.period))].sort(pOrd),P=(S.period!=='all'&&periods.includes(S.period))?S.period:(periods[0]||'all'),st=T.students.filter(s=>!s.nodata&&(P==='all'||String(s.period)===P)),n=st.length;
+  const rt=st[0]&&st[0].route,M=(T.meta.byRoute&&rt&&T.meta.byRoute[rt])||T.meta;
+  const rows=M.lessons.map((l,i)=>{const d=st.filter(s=>s.st[i]==='mastered'||s.st[i]==='proficient').length,r=st.filter(s=>s.st[i]==='retake').length,p=n?Math.round(d/n*100):0;
     return`<div class="lr"><b>${E(l.id)}</b><span>${E(l.name)}</span><span class="bar"><i class="cy" style="width:${p}%"></i></span><em>${p}% · ${d} / ${n}${r?` · <span class="or">${r} retake</span>`:''}</em></div>`}).join('');
-  const labs=T.meta.labs.map((l,i)=>{const d=st.filter(s=>s.labs[i]==='complete').length,p=n?Math.round(d/n*100):0;return`<div class="lr"><b>${E(l.id)}</b><span>${E(l.name||'Lab')} <small>(lab)</small></span><span class="bar"><i class="gd" style="width:${p}%"></i></span><em>${p}% · ${d} / ${n} complete</em></div>`}).join('');
-  const att=st.filter(s=>s.attention).map(s=>`${E(s.name)}: ${T.meta.lessons.filter((l,i)=>s.st[i]==='retake'||s.st[i]==='below').map(l=>E(l.id)).join(', ')}`);
-  return`<section class="pn"><h2>CLASS PROGRESS<small>${n} STUDENTS WITH SCORES</small></h2><div class="bar-row"><label>Period <select id="per"><option value="all">All</option>${periods.map(p=>`<option value="${E(p)}" ${String(p)===S.period?'selected':''}>${E(p)}</option>`).join('')}</select></label></div>${n?rows+labs:'<p class="note">No scores in the gradebook yet for this period.</p>'}</section>
+  const labs=M.labs.map((l,i)=>{const d=st.filter(s=>s.labs[i]==='complete').length,p=n?Math.round(d/n*100):0;return`<div class="lr"><b>${E(l.id)}</b><span>${E(l.name||'Lab')} <small>(lab)</small></span><span class="bar"><i class="gd" style="width:${p}%"></i></span><em>${p}% · ${d} / ${n} complete</em></div>`}).join('');
+  const att=st.filter(s=>s.attention).map(s=>`${E(s.name)}: ${M.lessons.filter((l,i)=>s.st[i]==='retake'||s.st[i]==='below').map(l=>E(l.id)).join(', ')}`);
+  return`<section class="pn"><h2>CLASS PROGRESS<small>${n} STUDENTS WITH SCORES</small></h2><div class="bar-row"><label>Class <select id="per">${periods.map(p=>`<option value="${E(p)}" ${p===P?'selected':''}>${E(p)}</option>`).join('')}</select></label></div>${n?rows+labs:'<p class="note">No scores in the gradebook yet for this class.</p>'}</section>
 <section class="pn"><h2>NEEDS A RETAKE OR REVIEW<small>${att.length}</small></h2>${att.length?att.map(a=>`<div class="li">${a}</div>`).join(''):'<p class="note">Nobody right now.</p>'}</section>`}
 function updateTab(tl){
   const c=lsGet(GH,{}),r=S.result,gok=!!ghCfg();
   const setup=S.setup?`<section class="pn nu"><h2>YOUR TEACHER LINK<small>SAVE THIS FIRST</small></h2><p class="note">This link opens these teacher tools and is the only thing that unlocks the student data. Bookmark it or store it in a password manager. If it is lost, every student link has to be reissued.</p><div class="linkbox">${E(tl)}</div><div class="bar-row"><button class="btn" data-act="copyt">Copy teacher link</button><label class="chk"><input type="checkbox" id="ack" ${S.ack?'checked':''}> I saved my teacher link</label></div></section>`:'';
-  const gh=`<section class="pn"><h2>1 · GITHUB CONNECTION<small>${gok?'SAVED ON THIS COMPUTER':'OPTIONAL'}</small></h2><p class="note">Fill this in once to publish with one click. Without it you can still download <b>data.json</b> and upload it to GitHub by hand. The token is stored only in this browser.</p><div class="form"><label>GitHub username<input id="g_owner" value="${E(c.owner||'')}" autocomplete="off"></label><label>Repository name<input id="g_repo" value="${E(c.repo||'')}" autocomplete="off"></label><label>Branch<input id="g_branch" value="${E(c.branch||'main')}" autocomplete="off"></label><label>Token<input id="g_token" type="password" value="${c.token?'••••••••':''}" placeholder="paste token" autocomplete="off"></label></div><div class="bar-row"><button class="btn" data-act="savegh">Save connection</button>${c.token?'<button class="btn ghost" data-act="forget">Forget token</button>':''}</div></section>`;
+  const gh=`<section class="pn"><h2>1 · GITHUB CONNECTION<small>${gok?'SAVED ON THIS COMPUTER':'OPTIONAL'}</small></h2><p class="note">Fill this in once to publish with one click. Without it you can still download <b>data.json</b> and upload it to GitHub by hand. The token is saved in this browser, so you only enter it once.${S.restored?' <b>Restored from the site just now.</b>':''}</p><div class="form"><label>GitHub username<input id="g_owner" value="${E(c.owner||'')}" autocomplete="off"></label><label>Repository name<input id="g_repo" value="${E(c.repo||'')}" autocomplete="off"></label><label>Branch<input id="g_branch" value="${E(c.branch||'main')}" autocomplete="off"></label><label>Token<input id="g_token" type="password" value="${c.token?'••••••••':''}" placeholder="paste token" autocomplete="off"></label></div><label class="chk"><input type="checkbox" id="ghb" ${lsGet(GHB,true)?'checked':''}> Keep an encrypted copy of this connection on the site, so opening your teacher link on any computer restores it. It is locked with your teacher key, the same way student pages are.</label><div class="bar-row"><button class="btn" data-act="savegh">Save connection</button>${c.token?'<button class="btn ghost" data-act="forget">Forget token</button>':''}</div></section>`;
   const file=`<section class="pn"><h2>2 · GRADEBOOK<small>${r?E(r.file):'NO FILE CHOSEN'}</small></h2><div class="bar-row"><button class="btn" data-act="choose">Choose gradebook…</button><button class="btn ghost" data-act="last">Use last file</button></div>${S.busy?`<p class="note">${E(S.busy)}</p>`:''}${S.err?`<p class="note err">${E(S.err)}</p>`:''}${r?summary(r):''}</section>`;
   const pub=`<section class="pn"><h2>3 · PUBLISH</h2>${r?`<div class="bar-row"><button class="btn" data-act="publish" ${(!gok||(S.setup&&!S.ack)||S.busy)?'disabled':''}>Publish to site</button><button class="btn ghost" data-act="download">Download data.json</button></div>${!gok?'<p class="note">Save a GitHub connection above to publish with one click.</p>':''}${S.setup&&!S.ack?'<p class="note">Tick “I saved my teacher link” first.</p>':''}${S.foreign?'<p class="note warn">The site already has data made with a different teacher key.</p>'+(S.setup?'<label class="chk"><input type="checkbox" id="repl" '+(S.replaceOk?'checked':'')+'> Replace it. Every old student link will stop working.</label>':''):''}${S.published?'<p class="note ok">Published. GitHub Pages usually shows the update within a couple of minutes.</p>':''}`:'<p class="note">Choose a gradebook first.</p>'}</section>`;
   return setup+gh+file+pub}
@@ -584,17 +624,17 @@ document.addEventListener('click',async e=>{
   else if(a==='verse'){showVerse(+b.dataset.i);startVerses();S.vi=+b.dataset.i}
   else if(a==='notme'){try{localStorage.removeItem('cq_me')}catch(x){}boot()}
   else if(a==='open')window.open(link(k),'_blank','noopener');
-  else if(a==='csv')dl('student_links.csv',csv([['Student','Period','Link'],...S.teacher.students.map(s=>[s.name,s.period,link(s.key)])]),'text/csv');
+  else if(a==='csv')dl('student_links.csv',csv([['Student','Class','Link'],...S.teacher.students.map(s=>[s.name,s.period,link(s.key)])]),'text/csv');
   else if(a==='reissue'){S.reissue.add(b.dataset.n);paint()}
   else if(a==='copyt'){try{await navigator.clipboard.writeText(baseUrl()+'#t='+S.tkey);b.textContent='Copied'}catch(x){prompt('Copy this link:',baseUrl()+'#t='+S.tkey)}}
-  else if(a==='savegh'){const old=lsGet(GH,{}),t=$('#g_token').value;lsSet(GH,{owner:$('#g_owner').value.trim(),repo:$('#g_repo').value.trim(),branch:$('#g_branch').value.trim()||'main',path:'data.json',token:t&&t!=='••••••••'?t.trim():old.token||''});S.err=null;paint()}
+  else if(a==='savegh'){try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist()}catch(x){}const old=lsGet(GH,{}),t=$('#g_token').value;lsSet(GH,{owner:$('#g_owner').value.trim(),repo:$('#g_repo').value.trim(),branch:$('#g_branch').value.trim()||'main',path:'data.json',token:t&&t!=='••••••••'?t.trim():old.token||''});S.err=null;paint()}
   else if(a==='forget'){const c=lsGet(GH,{});delete c.token;lsSet(GH,c);paint()}
   else if(a==='choose'){const f=await chooseFile();if(f)build(f)}
   else if(a==='last'){const f=await lastFile();if(f)build(f);else{S.err='No saved file yet. Choose the gradebook once and it will be remembered on this computer (Chrome or Edge).';paint()}}
   else if(a==='publish')publish();
   else if(a==='download')dl('data.json',JSON.stringify(S.result.data),'application/json');
 });
-document.addEventListener('change',e=>{if(e.target.id==='remme'){const k=e.target.dataset.k;if(e.target.checked)lsSet('cq_me',k);else try{localStorage.removeItem('cq_me')}catch(x){}return}if(e.target.id==='cper'){S.csel=e.target.value;lsSet('cq_period',S.csel);history.replaceState(null,'',cHash(S.csel,S.cme));app.innerHTML=classPage(S.cdata,S.csel,S.cme);return}if(e.target.id==='per'){S.period=e.target.value;paint()}if(e.target.id==='ack'){S.ack=e.target.checked;paint()}if(e.target.id==='repl'){S.replaceOk=e.target.checked}});
+document.addEventListener('change',e=>{if(e.target.id==='ghb'){lsSet(GHB,e.target.checked);return}if(e.target.id==='remme'){const k=e.target.dataset.k;if(e.target.checked)lsSet('cq_me',k);else try{localStorage.removeItem('cq_me')}catch(x){}return}if(e.target.id==='cper'){S.csel=e.target.value;lsSet('cq_period',S.csel);history.replaceState(null,'',cHash(S.csel,S.cme));app.innerHTML=classPage(S.cdata,S.csel,S.cme);return}if(e.target.id==='per'){S.period=e.target.value;paint()}if(e.target.id==='ack'){S.ack=e.target.checked;paint()}if(e.target.id==='repl'){S.replaceOk=e.target.checked}});
 window.CQ={seal,unseal,idOf,readSheets,parseGradebook,boot};
 boot();
 
